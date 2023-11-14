@@ -76,6 +76,7 @@ typedef struct {
 	/* the transaction handle */
 	isc_tr_handle tr;
 	bool in_manually_txn:1;
+	bool is_writable_txn:1;
 
 	/* the last error that didn't come from the API */
 	char const *last_app_error;
@@ -92,6 +93,8 @@ typedef struct {
 
 	unsigned _reserved:29;
 
+	/* transaction isolation level */
+	zend_ulong txn_isolation_level;
 } pdo_firebird_db_handle;
 
 
@@ -138,6 +141,12 @@ enum {
 	PDO_FB_ATTR_DATE_FORMAT = PDO_ATTR_DRIVER_SPECIFIC,
 	PDO_FB_ATTR_TIME_FORMAT,
 	PDO_FB_ATTR_TIMESTAMP_FORMAT,
+
+	/* transaction isolation level */
+	PDO_FB_TRANSACTION_ISOLATION_LEVEL,
+	PDO_FB_READ_COMMITTED,
+	PDO_FB_REPEATABLE_READ,
+	PDO_FB_SERIALIZABLE,
 };
 
 #endif	/* PHP_PDO_FIREBIRD_INT_H */
