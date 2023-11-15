@@ -142,7 +142,7 @@
 typedef struct _ir_refs {
   uint32_t count;
   uint32_t limit;
-  ir_ref   refs[0];
+  ir_ref   refs[0] ZEND_ELEMENT_COUNT(count);
 } ir_refs;
 
 #define ir_refs_size(_n)          (offsetof(ir_refs, refs) + sizeof(ir_ref) * (_n))
@@ -7536,7 +7536,7 @@ static int zend_jit_defined(zend_jit_ctx *jit, const zend_op *opline, uint8_t sm
 	uint32_t defined_label = (uint32_t)-1;
 	uint32_t undefined_label = (uint32_t)-1;
 	zval *zv = RT_CONSTANT(opline, opline->op1);
-	zend_jit_addr res_addr;
+	zend_jit_addr res_addr = 0;
 	ir_ref ref, ref2, if_set, if_zero, if_set2;
 	ir_ref end_inputs = IR_UNUSED, true_inputs = IR_UNUSED, false_inputs = IR_UNUSED;
 

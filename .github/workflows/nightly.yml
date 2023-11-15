@@ -32,7 +32,7 @@ jobs:
             nightly-
       - name: Generate Matrix
         id: set-matrix
-        run: php .github/nightly_matrix.php "${{ github.event_name }}" "${{ github.run_attempt }}"
+        run: php .github/nightly_matrix.php "${{ github.event_name }}" "${{ github.run_attempt }}" "${{ github.head_ref || github.ref_name }}"
       - name: Notify Slack
         if: failure()
         uses: ./.github/actions/notify-slack
@@ -60,7 +60,7 @@ jobs:
         zts: [true, false]
         include: ${{ fromJson(needs.GENERATE_MATRIX.outputs.matrix-include) }}
     name: "${{ matrix.branch.name }}_LINUX_X64${{ matrix.name }}_${{ matrix.debug && 'DEBUG' || 'RELEASE' }}_${{ matrix.zts && 'ZTS' || 'NTS' }}"
-    runs-on: ubuntu-${{ ((matrix.branch.ref == 'PHP-8.3' || matrix.branch.ref == 'master') && !matrix.asan) && '22.04' || '20.04' }}
+    runs-on: ubuntu-${{ (matrix.branch.version.minor >= 3 && !matrix.asan) && '22.04' || '20.04' }}
     steps:
       - name: git checkout
         uses: actions/checkout@v4
@@ -147,7 +147,7 @@ jobs:
     name: "${{ matrix.branch.name }}_LINUX_X32_${{ matrix.debug && 'DEBUG' || 'RELEASE' }}_${{ matrix.zts && 'ZTS' || 'NTS' }}"
     runs-on: ubuntu-latest
     container:
-      image: ubuntu:${{ (matrix.branch.ref == 'PHP-8.3' || matrix.branch.ref == 'master') && '22.04' || '20.04' }}
+      image: ubuntu:${{ matrix.branch.version.minor >= 3 && '22.04' || '20.04' }}
     services:
       mysql:
         image: mysql:8
@@ -331,7 +331,7 @@ jobs:
       matrix:
         branch: ${{ fromJson(needs.GENERATE_MATRIX.outputs.branches) }}
     name: "${{ matrix.branch.name }}_COMMUNITY"
-    runs-on: ubuntu-${{ (matrix.branch.ref == 'PHP-8.3' || matrix.branch.ref == 'master') && '22.04' || '20.04' }}
+    runs-on: ubuntu-${{ matrix.branch.version.minor >= 3 && '22.04' || '20.04' }}
     env:
       UBSAN_OPTIONS: print_stacktrace=1
       USE_ZEND_ALLOC: 0
@@ -364,7 +364,9 @@ jobs:
         run: |
           echo zend_extension=opcache.so > /etc/php.d/opcache.ini
           echo opcache.enable_cli=1 >> /etc/php.d/opcache.ini
+          echo opcache.enable=1 >> /etc/php.d/opcache.ini
           echo opcache.protect_memory=1 >> /etc/php.d/opcache.ini
+          echo opcache.jit=tracing >> /etc/php.d/opcache.ini
           echo opcache.jit_buffer_size=1G >> /etc/php.d/opcache.ini
           echo opcache.jit_max_root_traces=100000 >> /etc/php.d/opcache.ini
           echo opcache.jit_max_side_traces=100000 >> /etc/php.d/opcache.ini
@@ -373,6 +375,10 @@ jobs:
           echo opcache.jit_hot_func=1 >> /etc/php.d/opcache.ini
           echo opcache.jit_hot_return=1 >> /etc/php.d/opcache.ini
           echo opcache.jit_hot_side_exit=1 >> /etc/php.d/opcache.ini
+          echo opcache.file_update_protection=0 >> /etc/php.d/opcache.ini
+          echo opcache.memory_consumption=256M >> /etc/php.d/opcache.ini
+          echo opcache.interned_strings_buffer=64 >> /etc/php.d/opcache.ini
+          echo opcache.max_accelerated_files=100000 >> /etc/php.d/opcache.ini
           echo memory_limit=-1 >> /etc/php.d/opcache.ini
           php -v
       - name: Test AMPHP
@@ -517,7 +523,7 @@ jobs:
       matrix:
         branch: ${{ fromJson(needs.GENERATE_MATRIX.outputs.branches) }}
     name: "${{ matrix.branch.name }}_OPCACHE_VARIATION"
-    runs-on: ubuntu-${{ (matrix.branch.ref == 'PHP-8.3' || matrix.branch.ref == 'master') && '22.04' || '20.04' }}
+    runs-on: ubuntu-${{ matrix.branch.version.minor >= 3 && '22.04' || '20.04' }}
     steps:
       - name: git checkout
         uses: actions/checkout@v4
@@ -593,7 +599,7 @@ jobs:
       matrix:
         branch: ${{ fromJson(needs.GENERATE_MATRIX.outputs.branches) }}
     name: "${{ matrix.branch.name }}_MSAN"
-    runs-on: ubuntu-${{ (matrix.branch.ref == 'PHP-8.3' || matrix.branch.ref == 'master') && '22.04' || '20.04' }}
+    runs-on: ubuntu-${{ matrix.branch.version.minor >= 3 && '22.04' || '20.04' }}
     steps:
       - name: git checkout
         uses: actions/checkout@v4
@@ -693,7 +699,7 @@ jobs:
         exclude:
           - branch: { name: 'PHP-80', ref: 'PHP-8.0' }
     name: "${{ matrix.branch.name }}_LIBMYSQLCLIENT"
-    runs-on: ubuntu-${{ (matrix.branch.ref == 'PHP-8.3' || matrix.branch.ref == 'master') && '22.04' || '20.04' }}
+    runs-on: ubuntu-${{ matrix.branch.version.minor >= 3 && '22.04' || '20.04' }}
     steps:
       - name: git checkout
         uses: actions/checkout@v4
