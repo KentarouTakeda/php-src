@@ -116,6 +116,7 @@ void pdo_pgsql_cleanup_notice_callback(pdo_pgsql_db_handle *H);
 
 void pdo_libpq_version(char *buf, size_t len);
 void pdo_pgsql_close_lob_streams(pdo_dbh_t *dbh);
+void pdo_pgsql_drain_results(pdo_pgsql_db_handle *H);
 
 void pgsqlCopyFromArray_internal(INTERNAL_FUNCTION_PARAMETERS);
 void pgsqlCopyFromFile_internal(INTERNAL_FUNCTION_PARAMETERS);

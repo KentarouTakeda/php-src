@@ -242,6 +242,42 @@ void pdo_pgsql_close_lob_streams(pdo_dbh_t *dbh)
 	}
 }
 
+void pdo_pgsql_drain_results(pdo_pgsql_db_handle *H)
+{
+	PGresult *result;
+
+	while ((result = PQgetResult(H->server))) {
+		ExecStatusType status = PQresultStatus(result);
+
+		PQclear(result);
+
+		/* PQgetResult() keeps handing out the same result while the
+		 * connection is copying: only these calls can end it */
+		if (status == PGRES_COPY_IN || status == PGRES_COPY_BOTH) {
+			/* fail a copy in, so that abandoning a statement cannot
+			 * commit it; a replication stream only accepts a clean end */
+			const char *error = status == PGRES_COPY_IN
+				? "COPY terminated by PDO"
+				: NULL;
+
+			if (PQputCopyEnd(H->server, error) != 1) {
+				break;
+			}
+		}
+		if (status == PGRES_COPY_OUT || status == PGRES_COPY_BOTH) {
+			char *buf;
+			int nbytes;
+
+			while ((nbytes = PQgetCopyData(H->server, &buf, 0)) > 0) {
+				PQfreemem(buf);
+			}
+			if (nbytes < -1) {
+				break;
+			}
+		}
+	}
+}
+
 static void pgsql_handle_closer(pdo_dbh_t *dbh) /* {{{ */
 {
 	pdo_pgsql_db_handle *H = (pdo_pgsql_db_handle *)dbh->driver_data;
@@ -659,9 +695,7 @@ void pgsqlCopyFromArray_internal(INTERNAL_FUNCTION_PARAMETERS)
 	/* Obtain db Handle */
 	H = (pdo_pgsql_db_handle *)dbh->driver_data;
 
-	while ((pgsql_result = PQgetResult(H->server))) {
-		PQclear(pgsql_result);
-	}
+	pdo_pgsql_drain_results(H);
 	pgsql_result = PQexec(H->server, query);
 
 	efree(query);
@@ -777,9 +811,7 @@ void pgsqlCopyFromFile_internal(INTERNAL_FUNCTION_PARAMETERS)
 
 	H = (pdo_pgsql_db_handle *)dbh->driver_data;
 
-	while ((pgsql_result = PQgetResult(H->server))) {
-		PQclear(pgsql_result);
-	}
+	pdo_pgsql_drain_results(H);
 	pgsql_result = PQexec(H->server, query);
 
 	efree(query);
@@ -873,9 +905,7 @@ void pgsqlCopyToFile_internal(INTERNAL_FUNCTION_PARAMETERS)
 		RETURN_FALSE;
 	}
 
-	while ((pgsql_result = PQgetResult(H->server))) {
-		PQclear(pgsql_result);
-	}
+	pdo_pgsql_drain_results(H);
 
 	/* using pre-9.0 syntax as PDO_pgsql is 7.4+ compatible */
 	if (pg_fields) {
@@ -964,9 +994,7 @@ void pgsqlCopyToArray_internal(INTERNAL_FUNCTION_PARAMETERS)
 
 	H = (pdo_pgsql_db_handle *)dbh->driver_data;
 
-	while ((pgsql_result = PQgetResult(H->server))) {
-		PQclear(pgsql_result);
-	}
+	pdo_pgsql_drain_results(H);
 
 	/* using pre-9.0 syntax as PDO_pgsql is 7.4+ compatible */
 	if (pg_fields) {
